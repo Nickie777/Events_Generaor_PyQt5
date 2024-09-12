@@ -1,14 +1,13 @@
-from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton, QComboBox, \
+from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QLabel, QTextEdit, QLineEdit, QPushButton, QComboBox, \
     QDateTimeEdit, QMessageBox, QMenuBar, QAction, QDialog, QFormLayout
 from PyQt5.QtCore import QDateTime
+from PyQt5.QtGui import QFont
 import random
 import sys
 import json
 import requests
 from datetime import datetime
 from plyer import notification
-
-
 
 # Списки для выбора значений
 alarm_types = ["Capacity", "Communications", "Data", "Environmental", "Equipment", "Management", "Security", "Software",
@@ -27,9 +26,11 @@ class SettingsDialog(QDialog):
         self.setWindowTitle("Настройки")
         self.layout = QFormLayout()
 
-        # Поля для host и token
-        self.host = QLineEdit(self)
-        self.token = QLineEdit(self)
+        # Поля для host и token с увеличением размеров и многострочными
+        self.host = QTextEdit(self)
+        self.host.setFixedHeight(80)
+        self.token = QTextEdit(self)
+        self.token.setFixedHeight(80)
 
         # Загрузка сохранённых настроек
         self.load_settings()
@@ -46,7 +47,7 @@ class SettingsDialog(QDialog):
 
     def save_settings(self):
         with open('settings.json', 'w') as f:
-            json.dump({'host': self.host.text(), 'token': self.token.text()}, f)
+            json.dump({'host': self.host.toPlainText(), 'token': self.token.toPlainText()}, f)
         QMessageBox.information(self, "Сохранено", "Настройки сохранены.")
 
     def load_settings(self):
@@ -65,6 +66,10 @@ class AlarmApp(QMainWindow):
         self.setWindowTitle('Генератор Событий TRS-Alarm events Generator')
         self.setGeometry(100, 100, 600, 600)
 
+        # Шрифт для приложения
+        font = QFont("Arial", 12)
+        self.setFont(font)
+
         # Центральный виджет
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
@@ -76,6 +81,7 @@ class AlarmApp(QMainWindow):
         self.alarmId = QLineEdit(self)
         self.externalAlarmId = QLineEdit(self)
         self.alarmedObjectId = QLineEdit(self)
+        self.idCI = QLineEdit(self)  # Поле для нового атрибута idCI
         self.alarmType = QComboBox(self)
         self.alarmType.addItems(alarm_types)
         self.probableCause = QComboBox(self)
@@ -98,6 +104,8 @@ class AlarmApp(QMainWindow):
         self.layout.addWidget(self.externalAlarmId)
         self.layout.addWidget(QLabel("Alarmed Object ID"))
         self.layout.addWidget(self.alarmedObjectId)
+        self.layout.addWidget(QLabel("ID CI"))  # Новый атрибут
+        self.layout.addWidget(self.idCI)
         self.layout.addWidget(QLabel("Alarm Type"))
         self.layout.addWidget(self.alarmType)
         self.layout.addWidget(QLabel("Probable Cause"))
@@ -138,6 +146,7 @@ class AlarmApp(QMainWindow):
         self.alarmId.setText(str(random.randint(1000, 9999)))
         self.externalAlarmId.setText(str(random.randint(1000, 9999)))
         self.alarmedObjectId.setText(str(random.randint(1000, 9999)))
+        self.idCI.setText(str(random.randint(1000, 9999)))  # Генерация случайного значения для idCI
         self.alarmType.setCurrentText(random.choice(alarm_types))
         self.probableCause.setCurrentText(random.choice(probable_causes))
         self.perceivedSeverity.setCurrentText(random.choice(perceived_severities))
@@ -164,6 +173,7 @@ class AlarmApp(QMainWindow):
             "alarmId": self.alarmId.text(),
             "externalAlarmId": self.externalAlarmId.text(),
             "alarmedObjectId": self.alarmedObjectId.text(),
+            "idCI": self.idCI.text(),  # Добавлен новый параметр в запрос
             "alarmType": self.alarmType.currentText(),
             "probableCause": self.probableCause.currentText(),
             "perceivedSeverity": self.perceivedSeverity.currentText(),
@@ -182,18 +192,20 @@ class AlarmApp(QMainWindow):
             response = requests.post(self.host, json=alarm_data, headers=headers)
             if response.status_code == 200:
                 # Ограничиваем длину текста для уведомления
-                response_text = response.text[:240] + '...' if len(response.text) > 240 else response.text
+                response_text = response.text[:200]  # Обрезаем до 200 символов
 
                 # Push-уведомление с использованием plyer
                 notification.notify(
                     title="Запрос отправлен",
-                    message=f"Ответ: {response_text}",
-                    timeout=5  # Уведомление исчезнет через 5 секунд
+                    message=f"Ответ: {response_text[:200]}",  # Ограничение до 256 символов
+                    timeout=5
                 )
 
                 # Полный ответ можно вывести в отдельное диалоговое окно
                 QMessageBox.information(self, "Успех", f"Полный ответ: {response.text}")
             else:
+                # Полный ответ можно вывести в отдельное диалоговое окно
+                QMessageBox.information(self, "Успех", f"Полный ответ: {response.text}")
                 notification.notify(
                     title="Ошибка",
                     message=f"Ошибка: {response.status_code}",
@@ -202,15 +214,13 @@ class AlarmApp(QMainWindow):
         except Exception as e:
             notification.notify(
                 title="Ошибка",
-                message=f"Произошла ошибка: {str(e)[:250]}...",  # Ограничение текста ошибки
+                message=f"Произошла ошибка: {str(e)[:200]}...",  # Ограничение текста ошибки
                 timeout=5
             )
 
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-
-
-    window = AlarmApp()
-    window.show()
+    main_window = AlarmApp()
+    main_window.show()
     sys.exit(app.exec_())
