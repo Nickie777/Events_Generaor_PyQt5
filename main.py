@@ -297,26 +297,27 @@ class AlarmApp(QMainWindow):
                 response_text = response.text[:200]  # Обрезаем до 200 символов
 
                 # Push-уведомление с использованием plyer
-                notification.notify(
-                    title="Запрос отправлен",
-                    message=f"Ответ: {response_text[:200]}",  # Ограничение до 256 символов
-                    timeout=5
-                )
+                #notification.notify(
+                #    title="Запрос отправлен",
+                #    message=f"Ответ: {response_text[:200]}",  # Ограничение до 256 символов
+                #    timeout=5
+                #)
 
                 QMessageBox.information(self, "Успех", f"Полный ответ: {response.text}")
             else:
                 QMessageBox.information(self, "Ошибка", f"Полный ответ: {response.text}")
-                notification.notify(
-                    title="Ошибка",
-                    message=f"Ошибка: {response.status_code}",
-                    timeout=5
-                )
+                #notification.notify(
+                #    title="Ошибка",
+                #    message=f"Ошибка: {response.status_code}",
+                #    timeout=5
+                #)
         except Exception as e:
-            notification.notify(
-                title="Ошибка",
-                message=f"Произошла ошибка: {str(e)[:200]}...",  # Ограничение текста ошибки
-                timeout=5
-            )
+            QMessageBox.information(str(e))
+            #notification.notify(
+            #    title="Ошибка",
+            #    message=f"Произошла ошибка: {str(e)[:200]}...",  # Ограничение текста ошибки
+            #    timeout=5
+            #)
 
     def close_event(self):
             try:
@@ -344,16 +345,16 @@ class AlarmApp(QMainWindow):
 
                 if response.status_code == 200:
                     result_message = "Событие успешно закрыто"
-                    notification.notify(title='Успех', message=result_message)
+                    #notification.notify(title='Успех', message=result_message)
                     QMessageBox.information(self, "Успех", result_message)
                 else:
                     result_message = f"Ошибка закрытия события: {response.status_code}"
-                    notification.notify(title='Ошибка', message=result_message)
+                    #notification.notify(title='Ошибка', message=result_message)
                     QMessageBox.warning(self, "Ошибка", result_message)
 
             except Exception as e:
                 error_message = f"Произошла ошибка: {str(e)}"
-                notification.notify(title='Ошибка', message=error_message)
+                #notification.notify(title='Ошибка', message=error_message)
                 QMessageBox.critical(self, "Ошибка", error_message)
 
 
