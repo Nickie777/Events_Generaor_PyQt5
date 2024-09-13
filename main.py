@@ -33,33 +33,73 @@ class SettingsDialog(QDialog):
         self.token = QTextEdit(self)
         self.token.setFixedHeight(80)
 
+        # Поля для UserName и Password
+        self.username = QLineEdit(self)
+        self.password = QLineEdit(self)
+        self.password.setEchoMode(QLineEdit.Password)
+
         # Загрузка сохранённых настроек
         self.load_settings()
 
         self.layout.addRow("Host:", self.host)
         self.layout.addRow("Token:", self.token)
+        self.layout.addRow("UserName:", self.username)
+        self.layout.addRow("Password:", self.password)
 
         # Кнопка для сохранения настроек
         self.save_button = QPushButton("Сохранить")
         self.save_button.clicked.connect(self.save_settings)
         self.layout.addWidget(self.save_button)
 
+        # Кнопка для получения token
+        self.get_token_button = QPushButton("Получить Token")
+        self.get_token_button.clicked.connect(self.get_token)
+        self.layout.addWidget(self.get_token_button)
+
         self.setLayout(self.layout)
 
     def save_settings(self):
         with open('settings.json', 'w') as f:
-            json.dump({'host': self.host.toPlainText(), 'token': self.token.toPlainText()}, f)
+            json.dump({'host': self.host.toPlainText(),
+                       'token': self.token.toPlainText(),
+                       'username': self.username.text(),
+                       'password': self.password.text()}, f)
         QMessageBox.information(self, "Сохранено", "Настройки сохранены.")
 
     def load_settings(self):
         try:
             with open('settings.json', 'r') as f:
                 settings = json.load(f)
-                self.host.setText(settings['host'])
-                self.token.setText(settings['token'])
+                self.host.setText(settings.get('host', ''))
+                self.token.setText(settings.get('token', ''))
+                self.username.setText(settings.get('username', ''))
+                self.password.setText(settings.get('password', ''))
         except FileNotFoundError:
             pass
 
+    def get_token(self):
+        try:
+            host_url = self.host.toPlainText()
+            signin_url = host_url.replace("/rest/Trs.CiEventAPI.CiEventApiV3/Create", "/auth/signin")
+            credentials = {
+                "UserName": self.username.text(),
+                "Password": self.password.text()
+            }
+
+            headers = {
+                "Content-Type": "application/json"
+            }
+            response = requests.post(signin_url, json=credentials, headers=headers)
+
+            if response.status_code == 200:
+                data = response.json()
+                token = data.get('viewData', {}).get('token', '')
+                self.token.setText(token)
+                QMessageBox.information(self, "Успех", "Token успешно получен и сохранён.")
+            else:
+                QMessageBox.warning(self, "Ошибка", f"Не удалось получить token. Статус: {response.status_code}")
+        except Exception as e:
+            QMessageBox.critical(self, "Ошибка", f"Произошла ошибка: {str(e)}")
 
 class AlarmApp(QMainWindow):
     def __init__(self):
@@ -100,6 +140,11 @@ class AlarmApp(QMainWindow):
         self.send_action = QAction("Отправить событие", self)
         self.send_action.triggered.connect(self.send_event)
         self.menu_bar.addAction(self.send_action)
+
+        # Кнопка для закрытия события
+        self.close_event_action = QAction("Закрыть событие", self)
+        self.close_event_action.triggered.connect(self.close_event)
+        self.menu_bar.addAction(self.close_event_action)
 
         # Загрузка настроек
         self.load_settings()
@@ -272,6 +317,44 @@ class AlarmApp(QMainWindow):
                 message=f"Произошла ошибка: {str(e)[:200]}...",  # Ограничение текста ошибки
                 timeout=5
             )
+
+    def close_event(self):
+            try:
+                # Получаем host из настроек и модифицируем URL
+                host_url = self.host
+                close_event_url = host_url.replace("/Create", "/Clear")
+
+                # Формируем данные для запроса
+                event_closure_data = {
+                    "requestId": self.requestId.text(),
+                    "alarmState": self.alarmState.text(),
+                    "clearSystem": self.clearSystem.text(),
+                    "clearUserLogin": self.clearUserLogin.text(),
+                    "alarmClearedTime": self.alarmRaisedTime.dateTime().toString("yyyy-MM-dd HH:mm:ss")
+                }
+
+                # Заголовки для запроса
+                headers = {
+                    "Content-Type": "application/json",
+                    "Authorization": "Bearer " + self.token
+                }
+
+                # Отправляем POST запрос для закрытия события
+                response = requests.post(close_event_url, json=event_closure_data, headers=headers)
+
+                if response.status_code == 200:
+                    result_message = "Событие успешно закрыто"
+                    notification.notify(title='Успех', message=result_message)
+                    QMessageBox.information(self, "Успех", result_message)
+                else:
+                    result_message = f"Ошибка закрытия события: {response.status_code}"
+                    notification.notify(title='Ошибка', message=result_message)
+                    QMessageBox.warning(self, "Ошибка", result_message)
+
+            except Exception as e:
+                error_message = f"Произошла ошибка: {str(e)}"
+                notification.notify(title='Ошибка', message=error_message)
+                QMessageBox.critical(self, "Ошибка", error_message)
 
 
 if __name__ == "__main__":
