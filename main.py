@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QLabel, QTextEdit, QLineEdit, QPushButton, QComboBox, \
-    QDateTimeEdit, QMessageBox, QMenuBar, QAction, QDialog, QFormLayout
+    QDateTimeEdit, QMessageBox, QMenuBar, QAction, QDialog, QFormLayout, QTabWidget
 from PyQt5.QtCore import QDateTime
 from PyQt5.QtGui import QFont
 import random
@@ -8,6 +8,7 @@ import json
 import requests
 from datetime import datetime
 from plyer import notification
+
 
 # Списки для выбора значений
 alarm_types = ["Capacity", "Communications", "Data", "Environmental", "Equipment", "Management", "Security", "Software",
@@ -74,8 +75,40 @@ class AlarmApp(QMainWindow):
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
 
-        # Layout
+        # Tab Widget для разных вкладок
+        self.tab_widget = QTabWidget()
         self.layout = QVBoxLayout()
+        self.layout.addWidget(self.tab_widget)
+        self.central_widget.setLayout(self.layout)
+
+        # Вкладка для генерации события
+        self.event_tab = QWidget()
+        self.tab_widget.addTab(self.event_tab, "Генерация события")
+        self.create_event_tab()
+
+        # Вкладка для закрытия события
+        self.close_event_tab = QWidget()
+        self.tab_widget.addTab(self.close_event_tab, "Закрытие события")
+        self.create_close_event_tab()
+
+        # Верхнее меню
+        self.menu_bar = self.menuBar()
+        self.settings_action = QAction("Настройки", self)
+        self.settings_action.triggered.connect(self.open_settings_dialog)
+        self.menu_bar.addAction(self.settings_action)
+
+        self.send_action = QAction("Отправить событие", self)
+        self.send_action.triggered.connect(self.send_event)
+        self.menu_bar.addAction(self.send_action)
+
+        # Загрузка настроек
+        self.load_settings()
+
+        # При смене вкладок обновляем время и поля
+        self.tab_widget.currentChanged.connect(self.on_tab_change)
+
+    def create_event_tab(self):
+        event_layout = QVBoxLayout()
 
         # Поля для атрибутов
         self.alarmId = QLineEdit(self)
@@ -97,50 +130,66 @@ class AlarmApp(QMainWindow):
         self.alarmRaisedTime = QDateTimeEdit(self)
         self.alarmRaisedTime.setDateTime(QDateTime.currentDateTime())
 
+
+
         # Добавляем все поля в Layout
-        self.layout.addWidget(QLabel("Alarm ID"))
-        self.layout.addWidget(self.alarmId)
-        self.layout.addWidget(QLabel("External Alarm ID"))
-        self.layout.addWidget(self.externalAlarmId)
-        self.layout.addWidget(QLabel("Alarmed Object ID"))
-        self.layout.addWidget(self.alarmedObjectId)
-        self.layout.addWidget(QLabel("ID CI"))  # Новый атрибут
-        self.layout.addWidget(self.idCI)
-        self.layout.addWidget(QLabel("Alarm Type"))
-        self.layout.addWidget(self.alarmType)
-        self.layout.addWidget(QLabel("Probable Cause"))
-        self.layout.addWidget(self.probableCause)
-        self.layout.addWidget(QLabel("Perceived Severity"))
-        self.layout.addWidget(self.perceivedSeverity)
-        self.layout.addWidget(QLabel("Specific Problem"))
-        self.layout.addWidget(self.specificProblem)
-        self.layout.addWidget(QLabel("Alarm Details"))
-        self.layout.addWidget(self.alarmDetails)
-        self.layout.addWidget(QLabel("Source System"))
-        self.layout.addWidget(self.sourceSystem)
-        self.layout.addWidget(QLabel("Alarm Raised Time"))
-        self.layout.addWidget(self.alarmRaisedTime)
+        event_layout.addWidget(QLabel("Alarm ID"))
+        event_layout.addWidget(self.alarmId)
+        event_layout.addWidget(QLabel("External Alarm ID"))
+        event_layout.addWidget(self.externalAlarmId)
+        event_layout.addWidget(QLabel("Alarmed Object ID"))
+        event_layout.addWidget(self.alarmedObjectId)
+        event_layout.addWidget(QLabel("ID CI"))  # Новый атрибут
+        event_layout.addWidget(self.idCI)
+        event_layout.addWidget(QLabel("Alarm Type"))
+        event_layout.addWidget(self.alarmType)
+        event_layout.addWidget(QLabel("Probable Cause"))
+        event_layout.addWidget(self.probableCause)
+        event_layout.addWidget(QLabel("Perceived Severity"))
+        event_layout.addWidget(self.perceivedSeverity)
+        event_layout.addWidget(QLabel("Specific Problem"))
+        event_layout.addWidget(self.specificProblem)
+        event_layout.addWidget(QLabel("Alarm Details"))
+        event_layout.addWidget(self.alarmDetails)
+        event_layout.addWidget(QLabel("Source System"))
+        event_layout.addWidget(self.sourceSystem)
+        event_layout.addWidget(QLabel("Alarm Raised Time"))
+        event_layout.addWidget(self.alarmRaisedTime)
 
         # Кнопка для генерации случайных значений
         self.random_button = QPushButton("Заполнить случайные значения", self)
         self.random_button.clicked.connect(self.fill_random_values)
-        self.layout.addWidget(self.random_button)
+        event_layout.addWidget(self.random_button)
 
-        # Применение Layout
-        self.central_widget.setLayout(self.layout)
+        self.event_tab.setLayout(event_layout)
 
-        # Верхнее меню
-        self.menu_bar = self.menuBar()
-        self.settings_action = QAction("Настройки", self)
-        self.settings_action.triggered.connect(self.open_settings_dialog)
-        self.menu_bar.addAction(self.settings_action)
+    def create_close_event_tab(self):
+        close_layout = QVBoxLayout()
 
-        self.send_action = QAction("Отправить событие", self)
-        self.send_action.triggered.connect(self.send_event)
-        self.menu_bar.addAction(self.send_action)
+        # Поля для закрытия события
+        self.requestId = QLineEdit(self)
+        self.alarmClearedTime = QDateTimeEdit(self)
+        self.alarmClearedTime.setDateTime(QDateTime.currentDateTime())
+        self.alarmState = QLineEdit(self)
+        self.alarmState.setText("CLEARED")
+        self.alarmState.setReadOnly(True)
+        self.clearSystem = QLineEdit(self)
+        self.clearUserLogin = QLineEdit(self)
+        self.clearUserLogin.setText("admin")
 
-        # Загрузка настроек
-        self.load_settings()
+        # Добавляем все поля в Layout
+        close_layout.addWidget(QLabel("Request ID"))
+        close_layout.addWidget(self.requestId)
+        close_layout.addWidget(QLabel("Alarm Cleared Time"))
+        close_layout.addWidget(self.alarmClearedTime)
+        close_layout.addWidget(QLabel("Alarm State"))
+        close_layout.addWidget(self.alarmState)
+        close_layout.addWidget(QLabel("Clear System"))
+        close_layout.addWidget(self.clearSystem)
+        close_layout.addWidget(QLabel("Clear User Login"))
+        close_layout.addWidget(self.clearUserLogin)
+
+        self.close_event_tab.setLayout(close_layout)
 
     def fill_random_values(self):
         self.alarmId.setText(str(random.randint(1000, 9999)))
@@ -152,6 +201,11 @@ class AlarmApp(QMainWindow):
         self.perceivedSeverity.setCurrentText(random.choice(perceived_severities))
         self.alarmRaisedTime.setDateTime(QDateTime.currentDateTime())
         QMessageBox.information(self, "Заполнено", "Все параметры заполнены случайными значениями.")
+
+    def on_tab_change(self, index):
+        if index == 1:  # Вкладка "Закрытие события"
+            self.alarmClearedTime.setDateTime(QDateTime.currentDateTime())  # Установка текущего времени
+            self.clearSystem.setText(self.sourceSystem.text())  # Копирование значения sourceSystem
 
     def open_settings_dialog(self):
         self.settings_dialog = SettingsDialog(self)
@@ -191,6 +245,9 @@ class AlarmApp(QMainWindow):
             }
             response = requests.post(self.host, json=alarm_data, headers=headers)
             if response.status_code == 200:
+                response_data = response.json()  # Предполагаем, что ответ в формате JSON
+                self.requestId.setText(str(response_data.get("requestId", "")))  # Приведение к строке
+
                 # Ограничиваем длину текста для уведомления
                 response_text = response.text[:200]  # Обрезаем до 200 символов
 
@@ -201,11 +258,9 @@ class AlarmApp(QMainWindow):
                     timeout=5
                 )
 
-                # Полный ответ можно вывести в отдельное диалоговое окно
                 QMessageBox.information(self, "Успех", f"Полный ответ: {response.text}")
             else:
-                # Полный ответ можно вывести в отдельное диалоговое окно
-                QMessageBox.information(self, "Успех", f"Полный ответ: {response.text}")
+                QMessageBox.information(self, "Ошибка", f"Полный ответ: {response.text}")
                 notification.notify(
                     title="Ошибка",
                     message=f"Ошибка: {response.status_code}",
