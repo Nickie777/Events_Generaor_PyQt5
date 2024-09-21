@@ -152,6 +152,7 @@ class AlarmApp(QMainWindow):
         # При смене вкладок обновляем время и поля
         self.tab_widget.currentChanged.connect(self.on_tab_change)
 
+
     def create_event_tab(self):
         event_layout = QVBoxLayout()
 
@@ -172,10 +173,8 @@ class AlarmApp(QMainWindow):
         self.alarmDetails.setText("-")
         self.sourceSystem = QLineEdit(self)
         self.sourceSystem.setText("Генератор Событий TRS Events Generator")
-        self.alarmRaisedTime = QDateTimeEdit(self)
-        self.alarmRaisedTime.setDateTime(QDateTime.currentDateTime())
-
-
+        #self.alarmRaisedTime = QDateTimeEdit(self)
+        #self.alarmRaisedTime.setDateTime(QDateTime.currentDateTime())
 
         # Добавляем все поля в Layout
         event_layout.addWidget(QLabel("Alarm ID"))
@@ -198,7 +197,22 @@ class AlarmApp(QMainWindow):
         event_layout.addWidget(self.alarmDetails)
         event_layout.addWidget(QLabel("Source System"))
         event_layout.addWidget(self.sourceSystem)
+        #event_layout.addWidget(QLabel("Alarm Raised Time"))
+        #event_layout.addWidget(self.alarmRaisedTime)
+
+        # Добавляем QLabel для Alarm Raised Time
         event_layout.addWidget(QLabel("Alarm Raised Time"))
+
+        # Создаем виджет QDateTimeEdit для alarmRaisedTime
+        self.alarmRaisedTime = QDateTimeEdit()
+
+        # Устанавливаем текущее время
+        self.alarmRaisedTime.setDateTime(QDateTime.currentDateTime())
+
+        # Устанавливаем формат отображения с секундами
+        self.alarmRaisedTime.setDisplayFormat("dd.MM.yyyy HH:mm:ss")
+
+        # Добавляем виджет QDateTimeEdit в макет
         event_layout.addWidget(self.alarmRaisedTime)
 
         # Кнопка для генерации случайных значений
@@ -213,8 +227,8 @@ class AlarmApp(QMainWindow):
 
         # Поля для закрытия события
         self.requestId = QLineEdit(self)
-        self.alarmClearedTime = QDateTimeEdit(self)
-        self.alarmClearedTime.setDateTime(QDateTime.currentDateTime())
+        #self.alarmClearedTime = QDateTimeEdit(self)
+        #self.alarmClearedTime.setDateTime(QDateTime.currentDateTime())
         self.alarmState = QLineEdit(self)
         self.alarmState.setText("CLEARED")
         self.alarmState.setReadOnly(True)
@@ -225,14 +239,30 @@ class AlarmApp(QMainWindow):
         # Добавляем все поля в Layout
         close_layout.addWidget(QLabel("Request ID"))
         close_layout.addWidget(self.requestId)
-        close_layout.addWidget(QLabel("Alarm Cleared Time"))
-        close_layout.addWidget(self.alarmClearedTime)
+        #close_layout.addWidget(QLabel("Alarm Cleared Time"))
+        #close_layout.addWidget(self.alarmClearedTime)
         close_layout.addWidget(QLabel("Alarm State"))
         close_layout.addWidget(self.alarmState)
         close_layout.addWidget(QLabel("Clear System"))
         close_layout.addWidget(self.clearSystem)
         close_layout.addWidget(QLabel("Clear User Login"))
         close_layout.addWidget(self.clearUserLogin)
+
+        # Добавляем QLabel для Alarm Raised Time
+        close_layout.addWidget(QLabel("Alarm Cleared Time"))
+
+        # Создаем виджет QDateTimeEdit для alarmRaisedTime
+        self.alarmClearedTime = QDateTimeEdit()
+
+        # Устанавливаем текущее время
+        self.alarmClearedTime.setDateTime(QDateTime.currentDateTime())
+
+        # Устанавливаем формат отображения с секундами
+        self.alarmClearedTime.setDisplayFormat("dd.MM.yyyy HH:mm:ss")
+
+        # Добавляем виджет QDateTimeEdit в макет
+        close_layout.addWidget(self.alarmClearedTime)
+
 
         self.close_event_tab.setLayout(close_layout)
 
@@ -305,14 +335,15 @@ class AlarmApp(QMainWindow):
 
                 QMessageBox.information(self, "Успех", f"Полный ответ: {response.text}")
             else:
-                QMessageBox.information(self, "Ошибка", f"Полный ответ: {response.text}")
+                QMessageBox.information(self, "Ошибка", f"Полный ответ: {response.status_code}")
+
                 #notification.notify(
                 #    title="Ошибка",
                 #    message=f"Ошибка: {response.status_code}",
                 #    timeout=5
                 #)
         except Exception as e:
-            QMessageBox.information(str(e))
+            QMessageBox.information(self, "Ошибка", str(e))
             #notification.notify(
             #    title="Ошибка",
             #    message=f"Произошла ошибка: {str(e)[:200]}...",  # Ограничение текста ошибки
@@ -331,7 +362,7 @@ class AlarmApp(QMainWindow):
                     "alarmState": self.alarmState.text(),
                     "clearSystem": self.clearSystem.text(),
                     "clearUserLogin": self.clearUserLogin.text(),
-                    "alarmClearedTime": self.alarmRaisedTime.dateTime().toString("yyyy-MM-dd HH:mm:ss")
+                    "alarmClearedTime": self.alarmClearedTime.dateTime().toString("yyyy-MM-dd HH:mm:ss")
                 }
 
                 # Заголовки для запроса
@@ -361,5 +392,21 @@ class AlarmApp(QMainWindow):
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     main_window = AlarmApp()
+
+    window = QWidget()
+    layout = QVBoxLayout()
+
+    # Создаем виджет QDateTimeEdit
+    date_time_edit = QDateTimeEdit()
+
+    # Устанавливаем текущее время
+    date_time_edit.setDateTime(QDateTime.currentDateTime())
+
+    # Устанавливаем формат отображения с секундами
+    date_time_edit.setDisplayFormat("dd.MM.yyyy HH:mm:ss")
+
+    layout.addWidget(date_time_edit)
+    window.setLayout(layout)
+
     main_window.show()
     sys.exit(app.exec_())
